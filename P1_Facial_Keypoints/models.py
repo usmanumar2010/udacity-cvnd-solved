@@ -161,5 +161,117 @@ class AlexNet(nn.Module):
     
         return x
     
+    #vgg
+class vgg(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Standard convolutional layers in VGG16
+        self.conv1_1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)  # stride = 1, by default and Kernel size is
+                                                                            #3 x 3 a 3 by 3 filter will revolve
+        self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1) # the formula used over here is ((W-F)+2P)/S +1 weher W is width of our image and is F Filter=kernel=3, so ((64-3)+2(1))/1 +1=64 output
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1) #((64-3)+2(1))/1 +1
+        self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)  # ceiling (not floor) here for even dims
+
+        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv4_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.pool5 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  
+
+        # linear layer (512 * 7 * 7 ->4096)  or 25088 -> 4096
+        self.fc1 = nn.Linear(512*7*7, 4096)
+        self.fc2 = nn.Linear(4096, 4096)
+
+        self.fc3 = nn.Linear(in_features=4096, out_features=136) 
+
+        # dropout layer (p=0.25)
+        self.dropout = nn.Dropout(0.5)
+
+        ## Dropout 
+        self.dropout1 = nn.Dropout(p=0.2)
+        self.dropout2 = nn.Dropout(p=0.4)
+        self.dropout3 = nn.Dropout(p=0.6)
+
+        # Batch Normalization
+
+        self.bn1 = nn.BatchNorm1d(num_features=4096, eps=1e-05)
+        self.bn2 = nn.BatchNorm1d(num_features=4096, eps=1e-05)
+
+
+          ## Local response normalization
+    # if size=r=2 and a neuron has a strong activation, it will inhibit the activation
+    # of the neurons located in the feature maps immediately above and below its own.
+#         self.lrn = LocalResponseNorm(size=2, alpha=0.00002, beta=0.75, k=1)  # lrn is on new pytorch version apparently
+
+        # Custom weights initialization
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight = nn.init.xavier_uniform(m.weight, gain=1)
+            elif isinstance(m, nn.Linear):
+                # FC layers have weights initialized with Glorot uniform initialization
+                m.weight = nn.init.xavier_uniform(m.weight, gain=1)
+
+        
+    def forward(self, x):
+
+        out = F.relu(self.conv1_1(x))  
+        out = F.relu(self.conv1_2(out))  
+        out = self.pool1(out)  
+        out = self.dropout1(out)
+
+        out = F.relu(self.conv2_1(out))  
+        out = F.relu(self.conv2_2(out))  
+        out = self.pool2(out)  
+
+        out = F.relu(self.conv3_1(out))  
+        out = F.relu(self.conv3_2(out))  
+        out = F.relu(self.conv3_3(out))  
+        out = self.pool3(out)  
+        out = self.dropout2(out)
+
+        out = F.relu(self.conv4_1(out))  
+        out = F.relu(self.conv4_2(out))  
+        out = F.relu(self.conv4_3(out))  
+        out = self.pool4(out)  
+
+        out = F.relu(self.conv5_1(out))  
+        out = F.relu(self.conv5_2(out))  
+        out = F.relu(self.conv5_3(out))  
+        out = self.pool5(out)
+        out = self.dropout3(out)
+
+             ## Flatten
+        out = out.view(out.size(0), -1) 
+
+        ## Fully connected layers
+        out = F.relu(self.fc1(out))
+        out = self.bn1(out)
+        out = self.dropout3(out)
+
+        out = F.relu(self.fc2(out))
+        out = self.bn2(out)
+        out = self.dropout3(out)
+
+#         x = F.tanh(self.fc3(x))
+        out = self.fc3(out)
+
+
+
+        return out
+
+        
+        
         
       
